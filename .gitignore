@@ -1,0 +1,36 @@
+# Secrets and credentials
+*.env
+*.key
+*.pem
+*.pfx
+*.p12
+credentials/
+secrets/
+passwords/
+
+# Virtual machines and disk images
+*.iso
+*.vdi
+*.vmdk
+*.vhd
+*.vhdx
+*.ova
+*.ovf
+
+# Logs and network captures
+*.log
+*.pcap
+*.pcapng
+
+# Backups and archives
+*.bak
+*.backup
+*.zip
+*.7z
+
+# Windows and IDE files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
