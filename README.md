@@ -252,26 +252,6 @@ Expected result:
 The account is not used for daily administration and all usage must be audited.
 ```
 
-## Interview Topics Practiced
-
-This project is designed to support technical interview preparation for topics such as:
-
-- What is Privileged Access Management?
-- What is a privileged account?
-- What is the difference between a standard account and an administrative account?
-- What is the difference between a user account and a service account?
-- Why should administrators use separate privileged accounts?
-- What is least privilege?
-- What is separation of duties?
-- What is account onboarding?
-- What is password rotation?
-- What is password reconciliation?
-- What is a break-glass account?
-- What are Vault, PVWA, CPM, and PSM?
-- Why should Domain Admin accounts not be used for daily work?
-- What happens when the password stored in PAM does not match the target system?
-- How can privileged sessions be monitored and audited?
-
 ## Project Status
 
 - [x] Repository created
