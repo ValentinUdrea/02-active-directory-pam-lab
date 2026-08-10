@@ -269,7 +269,7 @@ The account is not used for daily administration and all usage must be audited.
 - [ ] Least privilege scenarios configured
 - [ ] Service account scenarios configured
 - [ ] PAM lifecycle scenarios documented
-- [ ] CyberArk interview notes completed
+
 
 ## Related Project
 
