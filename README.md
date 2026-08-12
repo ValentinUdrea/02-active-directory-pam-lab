@@ -1,48 +1,55 @@
 # Active Directory PAM Lab
 
-A hands-on Active Directory and Privileged Access Management lab focused on identity administration, privileged accounts, least privilege, service accounts, and CyberArk PAM concepts.
+A hands-on Active Directory and Privileged Access Management lab focused on identity administration, privileged accounts, least privilege, delegated permissions, service account security, emergency access, and security auditing.
 
 ## Project Objectives
 
-- Deploy a Windows Server Domain Controller
-- Configure Active Directory Domain Services and DNS
-- Create and organize users, computers, groups, and Organizational Units
-- Join a Windows 11 workstation to the domain
-- Separate standard and privileged user accounts
-- Configure delegated administrative permissions
-- Create service accounts and emergency access accounts
-- Simulate the privileged account lifecycle used in PAM solutions
-- Practice CyberArk concepts for technical interviews
+* Deploy a Windows Server Domain Controller
+* Configure Active Directory Domain Services and DNS
+* Create and organize users, computers, groups, and Organizational Units
+* Join a Windows 11 workstation to the domain
+* Separate standard and privileged user accounts
+* Implement least-privilege administrative access
+* Delegate limited helpdesk permissions
+* Restrict interactive logon for service accounts
+* Configure an emergency break-glass account
+* Apply security controls using Group Policy
+* Audit account management and authentication events
+* Document PAM concepts in an Active Directory environment
 
-## Planned Environment
+## Lab Environment
 
-| System | Role | Network |
-|---|---|---|
-| DC01-WindowsServer | Domain Controller and DNS Server | LAB-LAN |
-| CLT-Windows11-01 | Domain-joined workstation | LAB-LAN |
-| SRV-Ubuntu01 | Managed Linux server | LAB-LAN |
-| ATK-Kali01 | Isolated attack machine | ATTACK-LAN |
-| OPNsense | Firewall, routing, and network segmentation | LAB-LAN / ATTACK-LAN |
+| System       | Role                                                 | Network              |
+| ------------ | ---------------------------------------------------- | -------------------- |
+| DC01         | Windows Server 2025 Domain Controller and DNS Server | LAB-LAN              |
+| CLT-WIN11-01 | Domain-joined Windows 11 workstation                 | LAB-LAN              |
+| SRV-Ubuntu01 | Linux server                                         | LAB-LAN              |
+| ATK-Kali01   | Isolated attack machine                              | ATTACK-LAN           |
+| OPNsense     | Firewall, routing, and network segmentation          | LAB-LAN / ATTACK-LAN |
 
 ## Network Configuration
 
 ### LAB-LAN
 
-- Network: `10.10.20.0/24`
-- Gateway: `10.10.20.1`
-- Domain Controller: `10.10.20.10`
-- Windows 11 Client: `10.10.20.120`
-- Ubuntu Server: `10.10.20.110`
+* Network: `10.10.20.0/24`
+* Gateway: `10.10.20.1`
+* Domain Controller: `10.10.20.10`
+* Windows 11 Client: `10.10.20.120`
+* Ubuntu Server: `10.10.20.110`
 
 ### ATTACK-LAN
 
-- Network: `10.10.50.0/24`
-- Gateway: `10.10.50.1`
-- Kali Linux: `10.10.50.10`
+* Network: `10.10.50.0/24`
+* Gateway: `10.10.50.1`
+* Kali Linux: `10.10.50.10`
 
 The ATTACK-LAN network is isolated from LAB-LAN using OPNsense firewall rules.
 
-## Active Directory Design
+---
+
+## Active Directory Deployment
+
+Active Directory Domain Services and DNS were installed on `DC01`.
 
 Domain:
 
@@ -50,7 +57,17 @@ Domain:
 cyberlab.local
 ```
 
-Planned Organizational Unit structure:
+NetBIOS domain:
+
+```text
+CYBERLAB
+```
+
+The Windows 11 workstation was successfully joined to the domain and configured to use the Domain Controller as its DNS server.
+
+---
+
+## Active Directory Structure
 
 ```text
 CyberLab
@@ -62,223 +79,396 @@ CyberLab
 └── Groups
 ```
 
-## Planned Accounts
+This structure separates standard users, privileged identities, service accounts, computers, and security groups.
 
-### Standard User Accounts
+---
+
+## Accounts
+
+### Standard User
 
 ```text
 valentin.user
+```
+
+Used for normal domain activity without administrative privileges.
+
+### Privileged Administrator
+
+```text
+adm.valentin
+```
+
+A separate administrative identity used instead of granting administrative privileges to the standard user account.
+
+### Helpdesk User
+
+```text
 helpdesk.user
 ```
 
-### Privileged Accounts
+Used to demonstrate delegated Active Directory administration.
 
-```text
-adm.valentin
-breakglass.admin
-```
-
-### Service Accounts
+### Service Account
 
 ```text
 svc_backup
-svc_web
 ```
 
-## Planned Security Groups
+A dedicated service identity stored separately from normal user accounts.
+
+### Break-Glass Administrator
 
 ```text
-Server Administrators
-Workstation Administrators
-Helpdesk Password Reset
-CyberArk PAM Users
-CyberArk PAM Administrators
+breakglass.admin
 ```
 
-## Account Separation
+An emergency administrative account that remains disabled during normal operation.
 
-The lab separates standard accounts from privileged administrative accounts.
+---
 
-Example:
+## Security Groups
+
+The following Global Security groups were created:
+
+```text
+GG_Workstation_Admins
+GG_Server_Admins
+GG_Helpdesk_Password_Reset
+GG_Service_Accounts
+GG_PAM_Users
+GG_PAM_Admins
+```
+
+Administrative permissions are assigned through groups rather than directly to individual user accounts.
+
+---
+
+## Least Privilege Workstation Administration
+
+The privileged account:
+
+```text
+CYBERLAB\adm.valentin
+```
+
+was added to:
+
+```text
+CYBERLAB\GG_Workstation_Admins
+```
+
+A Group Policy Object named:
+
+```text
+GPO-Workstation-Local-Admins
+```
+
+adds `GG_Workstation_Admins` to the local built-in `Administrators` group on workstations in the `Workstations` OU.
+
+The configuration was validated on `CLT-WIN11-01`.
+
+Result:
 
 ```text
 valentin.user
-```
+→ Standard user
+→ No local administrative privileges
 
-This account will be used for normal daily activity and will not have administrative permissions.
-
-```text
 adm.valentin
+→ Member of GG_Workstation_Admins
+→ Local administrator on domain workstations
+→ Not a Domain Admin
 ```
 
-This account will be used only for approved administrative operations.
+This demonstrates least privilege and separation between daily and administrative identities.
 
-This design supports the principles of:
+---
 
-- Least privilege
-- Separation of duties
-- Reduced standing privileges
-- Privileged account accountability
+## Helpdesk Delegation
 
-## PAM and CyberArk Concepts
-
-The lab will demonstrate and document the following concepts:
-
-- Privileged account discovery
-- Privileged account onboarding
-- Safes and access permissions
-- Password verification
-- Password rotation
-- Password reconciliation
-- Least privilege
-- Separation of duties
-- Privileged session management
-- Session auditing and monitoring
-- Service account management
-- Emergency break-glass access
-
-## CyberArk Component Mapping
-
-| CyberArk Component | Purpose |
-|---|---|
-| Digital Vault | Securely stores privileged credentials |
-| PVWA | Web interface used to request and manage privileged access |
-| CPM | Verifies, changes, and reconciles passwords |
-| PSM | Isolates, controls, and monitors privileged sessions |
-| Safe | Logical container used to organize privileged accounts |
-| Platform | Defines how a specific type of account is managed |
-
-## Password Management Concepts
-
-### Verify
-
-Checks whether the password stored in the Vault works on the target system.
-
-### Change
-
-Changes the password on the target system using the currently known password.
-
-### Reconcile
-
-Resets the password using a separate reconciliation account when the stored password no longer matches the target account password.
-
-## Planned PAM Workflow
+The group:
 
 ```text
-1. Discover a privileged account
-2. Onboard the account into a Safe
-3. Assign an account management Platform
-4. Verify the stored password
-5. Rotate the account password
-6. Request privileged access
-7. Start a controlled administrative session
-8. Audit the privileged activity
-9. Reconcile the password if synchronization is lost
+GG_Helpdesk_Password_Reset
 ```
 
-## Planned Lab Scenarios
-
-### Scenario 1: Standard User Access
-
-A standard user logs into the Windows 11 workstation and attempts to perform an administrative task.
-
-Expected result:
+was delegated permission to reset passwords only inside:
 
 ```text
-Access denied without privileged credentials.
+CyberLab\Users
 ```
 
-### Scenario 2: Separate Administrative Account
-
-The user performs an administrative task using the dedicated account:
+The account:
 
 ```text
-adm.valentin
+helpdesk.user
 ```
 
-Expected result:
+was added to this group.
+
+### Validation
+
+The delegated permissions were tested using Active Directory Users and Computers.
+
+Result:
 
 ```text
-Administrative access is separated from normal user activity.
+helpdesk.user
+→ Can reset the password of valentin.user
+→ Cannot reset the password of adm.valentin
 ```
 
-### Scenario 3: Helpdesk Delegation
+Because privileged accounts are stored in a separate OU, the helpdesk account does not receive password-reset permissions over them.
 
-The helpdesk account receives permission to reset standard user passwords without becoming a Domain Administrator.
+This demonstrates delegated administration without granting Domain Admin privileges.
 
-Expected result:
+---
+
+## Service Account Security
+
+A dedicated security group was created:
 
 ```text
-The helpdesk user can perform only the delegated operation.
+GG_Service_Accounts
 ```
 
-### Scenario 4: Service Account Management
-
-A service account is created for an application or scheduled task.
-
-Expected result:
+The service account:
 
 ```text
-The service uses a dedicated account instead of a personal administrator account.
+svc_backup
 ```
 
-### Scenario 5: Password Rotation
+was added to this group.
 
-The password of a privileged account is changed and documented as a PAM password rotation scenario.
-
-Expected result:
+A Group Policy Object was configured to apply:
 
 ```text
-The privileged password is rotated without affecting unrelated accounts.
+Deny log on locally
+Deny log on through Remote Desktop Services
 ```
 
-### Scenario 6: Password Reconciliation
+to members of `GG_Service_Accounts`.
 
-The password of a managed account is manually changed outside the PAM process.
+### Validation
 
-Expected result:
+An interactive sign-in attempt was made on `CLT-WIN11-01` using `svc_backup`.
+
+The sign-in was blocked with:
 
 ```text
-The stored password becomes out of sync and must be reconciled.
+The sign-in method you're trying to use isn't allowed.
 ```
 
-### Scenario 7: Break-Glass Access
+This prevents service accounts from being used as normal interactive user accounts.
 
-An emergency account is created and reserved for recovery situations.
+---
 
-Expected result:
+## Break-Glass Emergency Access
+
+The account:
 
 ```text
-The account is not used for daily administration and all usage must be audited.
+breakglass.admin
 ```
+
+was configured as an emergency administrative identity.
+
+It is:
+
+```text
+Member of Domain Admins
+Disabled during normal operation
+```
+
+The account is intended only for emergency recovery scenarios.
+
+Normal state:
+
+```text
+breakglass.admin
+→ Disabled
+```
+
+Emergency workflow:
+
+```text
+Enable account
+→ Perform emergency administrative operation
+→ Audit activity
+→ Disable account again
+```
+
+---
+
+## Security Auditing
+
+A dedicated Domain Controller auditing policy was created:
+
+```text
+GPO-DC-Security-Auditing
+```
+
+Advanced Audit Policy was configured for:
+
+```text
+User Account Management
+Security Group Management
+Logon / Logoff
+```
+
+Success and failure auditing were enabled where appropriate.
+
+### Break-Glass Audit Test
+
+The `breakglass.admin` account was temporarily enabled and then disabled.
+
+The actions were successfully recorded in the Windows Security log.
+
+Relevant Event IDs:
+
+```text
+4722 - A user account was enabled
+4725 - A user account was disabled
+```
+
+### Authentication Auditing
+
+Successful and failed authentication attempts were also tested.
+
+Relevant security events include:
+
+```text
+4624 - Successful logon
+4625 - Failed logon
+4771 - Kerberos pre-authentication failure
+```
+
+This provides visibility into authentication attempts and privileged account activity.
+
+---
+
+## Group Policy Objects
+
+The lab currently uses the following security-focused GPOs:
+
+### GPO-Workstation-Local-Admins
+
+Adds:
+
+```text
+CYBERLAB\GG_Workstation_Admins
+```
+
+to the local built-in `Administrators` group on domain workstations.
+
+### GPO-Deny-Service-Account-Logon
+
+Prevents members of:
+
+```text
+CYBERLAB\GG_Service_Accounts
+```
+
+from interactive and Remote Desktop logon.
+
+### GPO-DC-Security-Auditing
+
+Enables advanced security auditing on the Domain Controller.
+
+---
+
+## PAM Concepts Demonstrated
+
+Although a commercial PAM platform is not deployed in this lab, the environment demonstrates several concepts commonly used in privileged access management:
+
+* Separation of standard and privileged identities
+* Least privilege
+* Role-based administrative access
+* Delegated administration
+* Privileged account isolation
+* Service account management
+* Restriction of interactive service-account usage
+* Emergency break-glass access
+* Privileged activity auditing
+* Authentication monitoring
+* Security group-based access control
+
+---
+
+## CyberArk Concept Mapping
+
+| CyberArk Component | Purpose                                                     |
+| ------------------ | ----------------------------------------------------------- |
+| Digital Vault      | Secure storage of privileged credentials                    |
+| PVWA               | Web interface for requesting and managing privileged access |
+| CPM                | Password management and credential lifecycle                |
+| PSM                | Isolation and monitoring of privileged sessions             |
+| Safe               | Logical container for privileged accounts                   |
+| Platform           | Defines how a managed account is handled                    |
+
+These components are documented conceptually and are not deployed in the current lab.
+
+---
+
+## Security Controls Validated
+
+The following controls have been tested successfully:
+
+```text
+Standard user without administrative privileges
+        ↓
+Dedicated privileged workstation administrator
+        ↓
+Helpdesk password-reset delegation
+        ↓
+Privileged account protection from helpdesk
+        ↓
+Service account interactive-logon restriction
+        ↓
+Break-glass emergency account
+        ↓
+Account-management auditing
+        ↓
+Successful and failed authentication auditing
+```
+
+---
 
 ## Project Status
 
-- [x] Repository created
-- [x] Security-focused `.gitignore` added
-- [x] Initial project documentation created
-- [ ] Windows Server ISO downloaded
-- [ ] Windows Server VM created
-- [ ] Static IP configured
-- [ ] Active Directory Domain Services installed
-- [ ] DNS Server configured
-- [ ] `cyberlab.local` domain created
-- [ ] Organizational Units created
-- [ ] Users and groups created
-- [ ] Windows 11 joined to the domain
-- [ ] Least privilege scenarios configured
-- [ ] Service account scenarios configured
-- [ ] PAM lifecycle scenarios documented
+* [x] Repository created
+* [x] Security-focused `.gitignore` added
+* [x] Windows Server 2025 VM deployed
+* [x] Static Domain Controller IP configured
+* [x] Active Directory Domain Services installed
+* [x] DNS Server configured
+* [x] `cyberlab.local` domain created
+* [x] Organizational Units created
+* [x] Users and security groups created
+* [x] Windows 11 workstation joined to the domain
+* [x] Standard and privileged accounts separated
+* [x] Workstation administrator privileges delegated through Group Policy
+* [x] Helpdesk password-reset permissions delegated
+* [x] Helpdesk least-privilege scenario validated
+* [x] Service account security group created
+* [x] Interactive logon denied for service accounts
+* [x] Service account restriction validated
+* [x] Break-glass administrative account configured
+* [x] Domain Controller advanced auditing configured
+* [x] Break-glass enable/disable events audited
+* [x] Successful and failed authentication auditing configured
+* [ ] Additional privileged access monitoring
+* [ ] Additional attack and detection scenarios
+* [ ] Centralized security logging
 
+---
 
 ## Related Project
 
-Virtual Network Security Lab:
+`01-virtual-network`
 
-https://github.com/ValentinUdrea/01-virtual-network
+The networking lab contains the underlying OPNsense firewall, network segmentation, LAB-LAN, and ATTACK-LAN architecture used by this project.
 
-## Disclaimer
+---
 
-This project is an educational home lab.
-
-It simulates Active Directory and Privileged Access Management concepts for learning and interview preparation. It is not a production deployment of CyberArk and does not contain real credentials or sensitive organizational data.
