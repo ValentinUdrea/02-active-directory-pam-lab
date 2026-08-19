@@ -1,6 +1,6 @@
 # Active Directory PAM Lab
 
-A hands-on Active Directory and Privileged Access Management lab focused on identity administration, privileged accounts, least privilege, delegated permissions, service account security, emergency access, and security auditing.
+A hands-on Active Directory and Privileged Access Management lab focused on identity administration, privileged accounts, least privilege, service accounts, delegated administration, security auditing, and PAM concepts.
 
 ## Project Objectives
 
@@ -8,24 +8,25 @@ A hands-on Active Directory and Privileged Access Management lab focused on iden
 * Configure Active Directory Domain Services and DNS
 * Create and organize users, computers, groups, and Organizational Units
 * Join a Windows 11 workstation to the domain
-* Separate standard and privileged user accounts
-* Implement least-privilege administrative access
-* Delegate limited helpdesk permissions
-* Restrict interactive logon for service accounts
-* Configure an emergency break-glass account
-* Apply security controls using Group Policy
-* Audit account management and authentication events
+* Join a Windows Server member server to the domain
+* Separate standard, workstation administrator, and server administrator accounts
+* Configure delegated administrative permissions
+* Restrict interactive use of service accounts
+* Create and protect an emergency break-glass account
+* Apply security controls through Group Policy
+* Audit privileged account and authentication activity
 * Document PAM concepts in an Active Directory environment
 
-## Lab Environment
+## Environment
 
-| System       | Role                                                 | Network              |
-| ------------ | ---------------------------------------------------- | -------------------- |
-| DC01         | Windows Server 2025 Domain Controller and DNS Server | LAB-LAN              |
-| CLT-WIN11-01 | Domain-joined Windows 11 workstation                 | LAB-LAN              |
-| SRV-Ubuntu01 | Linux server                                         | LAB-LAN              |
-| ATK-Kali01   | Isolated attack machine                              | ATTACK-LAN           |
-| OPNsense     | Firewall, routing, and network segmentation          | LAB-LAN / ATTACK-LAN |
+| System             | Role                                        | Network              |
+| ------------------ | ------------------------------------------- | -------------------- |
+| DC01-WindowsServer | Domain Controller and DNS Server            | LAB-LAN              |
+| CLT-WIN11-01       | Domain-joined workstation                   | LAB-LAN              |
+| SRV-WIN01          | Windows Server 2025 Member Server           | LAB-LAN              |
+| SRV-Ubuntu01       | Linux server                                | LAB-LAN              |
+| ATK-Kali01         | Isolated attack machine                     | ATTACK-LAN           |
+| OPNsense           | Firewall, routing, and network segmentation | LAB-LAN / ATTACK-LAN |
 
 ## Network Configuration
 
@@ -34,8 +35,9 @@ A hands-on Active Directory and Privileged Access Management lab focused on iden
 * Network: `10.10.20.0/24`
 * Gateway: `10.10.20.1`
 * Domain Controller: `10.10.20.10`
-* Windows 11 Client: `10.10.20.120`
+* Windows Server Member Server: `10.10.20.20`
 * Ubuntu Server: `10.10.20.110`
+* Windows 11 Client: `10.10.20.120`
 
 ### ATTACK-LAN
 
@@ -45,11 +47,7 @@ A hands-on Active Directory and Privileged Access Management lab focused on iden
 
 The ATTACK-LAN network is isolated from LAB-LAN using OPNsense firewall rules.
 
----
-
-## Active Directory Deployment
-
-Active Directory Domain Services and DNS were installed on `DC01`.
+## Active Directory Design
 
 Domain:
 
@@ -57,17 +55,7 @@ Domain:
 cyberlab.local
 ```
 
-NetBIOS domain:
-
-```text
-CYBERLAB
-```
-
-The Windows 11 workstation was successfully joined to the domain and configured to use the Domain Controller as its DNS server.
-
----
-
-## Active Directory Structure
+Organizational Unit structure:
 
 ```text
 CyberLab
@@ -79,11 +67,45 @@ CyberLab
 └── Groups
 ```
 
-This structure separates standard users, privileged identities, service accounts, computers, and security groups.
-
----
-
 ## Accounts
+
+### Standard User Accounts
+
+```text
+valentin.user
+helpdesk.user
+```
+
+### Privileged Accounts
+
+```text
+adm.valentin
+srv.adm.valentin
+breakglass.admin
+```
+
+### Service Accounts
+
+```text
+svc_backup
+```
+
+## Security Groups
+
+```text
+GG_Server_Admins
+GG_Workstation_Admins
+GG_Helpdesk_Password_Reset
+GG_Service_Accounts
+GG_PAM_Users
+GG_PAM_Admins
+```
+
+Permissions are assigned through security groups instead of being granted directly to individual accounts.
+
+## Account Separation
+
+The lab separates standard accounts from privileged administrative accounts.
 
 ### Standard User
 
@@ -91,127 +113,80 @@ This structure separates standard users, privileged identities, service accounts
 valentin.user
 ```
 
-Used for normal domain activity without administrative privileges.
+Used for normal domain activity without administrative permissions.
 
-### Privileged Administrator
+### Workstation Administrator
 
 ```text
 adm.valentin
 ```
 
-A separate administrative identity used instead of granting administrative privileges to the standard user account.
-
-### Helpdesk User
-
-```text
-helpdesk.user
-```
-
-Used to demonstrate delegated Active Directory administration.
-
-### Service Account
-
-```text
-svc_backup
-```
-
-A dedicated service identity stored separately from normal user accounts.
-
-### Break-Glass Administrator
-
-```text
-breakglass.admin
-```
-
-An emergency administrative account that remains disabled during normal operation.
-
----
-
-## Security Groups
-
-The following Global Security groups were created:
+Member of:
 
 ```text
 GG_Workstation_Admins
+```
+
+A Group Policy adds `GG_Workstation_Admins` to the local built-in `Administrators` group on computers inside the `Workstations` OU.
+
+This gives `adm.valentin` administrative rights on domain workstations without granting Domain Admin privileges.
+
+### Server Administrator
+
+```text
+srv.adm.valentin
+```
+
+Member of:
+
+```text
 GG_Server_Admins
-GG_Helpdesk_Password_Reset
-GG_Service_Accounts
-GG_PAM_Users
-GG_PAM_Admins
 ```
 
-Administrative permissions are assigned through groups rather than directly to individual user accounts.
+A separate Group Policy adds `GG_Server_Admins` to the local built-in `Administrators` group on member servers inside the `Servers` OU.
 
----
+This separates workstation administration from server administration.
 
-## Least Privilege Workstation Administration
-
-The privileged account:
-
-```text
-CYBERLAB\adm.valentin
-```
-
-was added to:
-
-```text
-CYBERLAB\GG_Workstation_Admins
-```
-
-A Group Policy Object named:
-
-```text
-GPO-Workstation-Local-Admins
-```
-
-adds `GG_Workstation_Admins` to the local built-in `Administrators` group on workstations in the `Workstations` OU.
-
-The configuration was validated on `CLT-WIN11-01`.
-
-Result:
+The resulting model is:
 
 ```text
 valentin.user
 → Standard user
-→ No local administrative privileges
 
 adm.valentin
-→ Member of GG_Workstation_Admins
-→ Local administrator on domain workstations
-→ Not a Domain Admin
+→ Workstation administrator
+
+srv.adm.valentin
+→ Server administrator
+
+breakglass.admin
+→ Emergency Domain Administrator
 ```
 
-This demonstrates least privilege and separation between daily and administrative identities.
+This design supports the principles of:
 
----
+* Least privilege
+* Separation of duties
+* Reduced standing privileges
+* Privileged account accountability
 
 ## Helpdesk Delegation
 
-The group:
-
-```text
-GG_Helpdesk_Password_Reset
-```
-
-was delegated permission to reset passwords only inside:
-
-```text
-CyberLab\Users
-```
-
-The account:
+The helpdesk account:
 
 ```text
 helpdesk.user
 ```
 
-was added to this group.
+is a member of:
 
-### Validation
+```text
+GG_Helpdesk_Password_Reset
+```
 
-The delegated permissions were tested using Active Directory Users and Computers.
+Password reset permissions were delegated only to the `CyberLab\Users` OU.
 
-Result:
+The configuration was validated successfully:
 
 ```text
 helpdesk.user
@@ -219,19 +194,9 @@ helpdesk.user
 → Cannot reset the password of adm.valentin
 ```
 
-Because privileged accounts are stored in a separate OU, the helpdesk account does not receive password-reset permissions over them.
-
 This demonstrates delegated administration without granting Domain Admin privileges.
 
----
-
 ## Service Account Security
-
-A dedicated security group was created:
-
-```text
-GG_Service_Accounts
-```
 
 The service account:
 
@@ -239,9 +204,13 @@ The service account:
 svc_backup
 ```
 
-was added to this group.
+is a member of:
 
-A Group Policy Object was configured to apply:
+```text
+GG_Service_Accounts
+```
+
+A Group Policy was configured to apply:
 
 ```text
 Deny log on locally
@@ -250,107 +219,55 @@ Deny log on through Remote Desktop Services
 
 to members of `GG_Service_Accounts`.
 
-### Validation
-
-An interactive sign-in attempt was made on `CLT-WIN11-01` using `svc_backup`.
-
-The sign-in was blocked with:
-
-```text
-The sign-in method you're trying to use isn't allowed.
-```
+An interactive login attempt using `svc_backup` was successfully blocked on the Windows 11 workstation.
 
 This prevents service accounts from being used as normal interactive user accounts.
 
----
+## Break-Glass Access
 
-## Break-Glass Emergency Access
-
-The account:
+The emergency account:
 
 ```text
 breakglass.admin
 ```
 
-was configured as an emergency administrative identity.
-
-It is:
+is a member of:
 
 ```text
-Member of Domain Admins
-Disabled during normal operation
+Domain Admins
 ```
 
-The account is intended only for emergency recovery scenarios.
+The account remains disabled during normal operation and is intended only for emergency recovery scenarios.
 
-Normal state:
+Expected workflow:
 
 ```text
-breakglass.admin
-→ Disabled
+Account disabled
+        ↓
+Emergency occurs
+        ↓
+Account enabled
+        ↓
+Administrative recovery performed
+        ↓
+Activity audited
+        ↓
+Account disabled again
 ```
 
-Emergency workflow:
+Enable and disable events for the account were successfully recorded in the Windows Security log.
+
+## Group Policy Configuration
+
+The following security-focused Group Policy Objects were created:
 
 ```text
-Enable account
-→ Perform emergency administrative operation
-→ Audit activity
-→ Disable account again
-```
-
----
-
-## Security Auditing
-
-A dedicated Domain Controller auditing policy was created:
-
-```text
+GPO-Workstation-Local-Admins
+GPO-Server-Local-Admins
+GPO-Deny-Service-Account-Logon
 GPO-DC-Security-Auditing
+GPO-Server-Security-Auditing
 ```
-
-Advanced Audit Policy was configured for:
-
-```text
-User Account Management
-Security Group Management
-Logon / Logoff
-```
-
-Success and failure auditing were enabled where appropriate.
-
-### Break-Glass Audit Test
-
-The `breakglass.admin` account was temporarily enabled and then disabled.
-
-The actions were successfully recorded in the Windows Security log.
-
-Relevant Event IDs:
-
-```text
-4722 - A user account was enabled
-4725 - A user account was disabled
-```
-
-### Authentication Auditing
-
-Successful and failed authentication attempts were also tested.
-
-Relevant security events include:
-
-```text
-4624 - Successful logon
-4625 - Failed logon
-4771 - Kerberos pre-authentication failure
-```
-
-This provides visibility into authentication attempts and privileged account activity.
-
----
-
-## Group Policy Objects
-
-The lab currently uses the following security-focused GPOs:
 
 ### GPO-Workstation-Local-Admins
 
@@ -360,7 +277,17 @@ Adds:
 CYBERLAB\GG_Workstation_Admins
 ```
 
-to the local built-in `Administrators` group on domain workstations.
+to the built-in local `Administrators` group on workstations.
+
+### GPO-Server-Local-Admins
+
+Adds:
+
+```text
+CYBERLAB\GG_Server_Admins
+```
+
+to the built-in local `Administrators` group on member servers.
 
 ### GPO-Deny-Service-Account-Logon
 
@@ -374,101 +301,249 @@ from interactive and Remote Desktop logon.
 
 ### GPO-DC-Security-Auditing
 
-Enables advanced security auditing on the Domain Controller.
+Enables security auditing on the Domain Controller.
 
----
+### GPO-Server-Security-Auditing
 
-## PAM Concepts Demonstrated
+Enables logon and process auditing on member servers.
 
-Although a commercial PAM platform is not deployed in this lab, the environment demonstrates several concepts commonly used in privileged access management:
+## Security Auditing
 
-* Separation of standard and privileged identities
+Advanced Windows auditing was configured to monitor account management, privileged group changes, authentication, and administrative activity.
+
+### Domain Controller Events
+
+The following events were tested:
+
+```text
+4722 - User account enabled
+4725 - User account disabled
+4728 - Member added to a Global Security Group
+4729 - Member removed from a Global Security Group
+4624 - Successful logon
+4625 - Failed logon
+```
+
+The `breakglass.admin` account was enabled and disabled to validate account-management auditing.
+
+Membership changes were also performed on:
+
+```text
+GG_PAM_Admins
+```
+
+to confirm that privileged group modifications are recorded.
+
+### Member Server Auditing
+
+Security auditing was configured on `SRV-WIN01`.
+
+Relevant events include:
+
+```text
+4624 - Successful logon
+4625 - Failed logon
+4672 - Special privileges assigned to a new logon
+4688 - New process created
+```
+
+The configuration was validated using the dedicated server administrator account:
+
+```text
+srv.adm.valentin
+```
+
+## PAM and CyberArk Concepts
+
+The lab demonstrates or supports the following PAM concepts:
+
 * Least privilege
-* Role-based administrative access
-* Delegated administration
+* Separation of duties
 * Privileged account isolation
+* Delegated administration
+* Role-based administrative access
 * Service account management
-* Restriction of interactive service-account usage
 * Emergency break-glass access
 * Privileged activity auditing
 * Authentication monitoring
-* Security group-based access control
+* Privileged session monitoring concepts
 
----
+## CyberArk Component Mapping
 
-## CyberArk Concept Mapping
+| CyberArk Component | Purpose                                                    |
+| ------------------ | ---------------------------------------------------------- |
+| Digital Vault      | Securely stores privileged credentials                     |
+| PVWA               | Web interface used to request and manage privileged access |
+| CPM                | Manages privileged account credentials                     |
+| PSM                | Isolates, controls, and monitors privileged sessions       |
+| Safe               | Logical container used to organize privileged accounts     |
+| Platform           | Defines how a specific type of account is managed          |
 
-| CyberArk Component | Purpose                                                     |
-| ------------------ | ----------------------------------------------------------- |
-| Digital Vault      | Secure storage of privileged credentials                    |
-| PVWA               | Web interface for requesting and managing privileged access |
-| CPM                | Password management and credential lifecycle                |
-| PSM                | Isolation and monitoring of privileged sessions             |
-| Safe               | Logical container for privileged accounts                   |
-| Platform           | Defines how a managed account is handled                    |
+These components are documented conceptually and are not deployed as part of the current lab.
 
-These components are documented conceptually and are not deployed in the current lab.
+## Lab Scenarios
 
----
+### Scenario 1: Standard User Access
 
-## Security Controls Validated
+A standard user logs into the Windows 11 workstation without local administrative rights.
 
-The following controls have been tested successfully:
+Result:
 
 ```text
-Standard user without administrative privileges
-        ↓
-Dedicated privileged workstation administrator
-        ↓
-Helpdesk password-reset delegation
-        ↓
-Privileged account protection from helpdesk
-        ↓
-Service account interactive-logon restriction
-        ↓
-Break-glass emergency account
-        ↓
-Account-management auditing
-        ↓
-Successful and failed authentication auditing
+Administrative operations require privileged credentials.
 ```
 
----
+### Scenario 2: Workstation Administrative Account
+
+Administrative operations on the workstation are performed using:
+
+```text
+adm.valentin
+```
+
+Result:
+
+```text
+Workstation administrative access is separated from normal user activity.
+```
+
+### Scenario 3: Helpdesk Delegation
+
+The helpdesk account can reset standard user passwords without becoming a Domain Administrator.
+
+Result:
+
+```text
+helpdesk.user can reset standard user passwords but cannot reset privileged accounts.
+```
+
+### Scenario 4: Service Account Restriction
+
+The service account:
+
+```text
+svc_backup
+```
+
+is prevented from logging on interactively.
+
+Result:
+
+```text
+The sign-in method you're trying to use isn't allowed.
+```
+
+### Scenario 5: Break-Glass Access
+
+An emergency Domain Administrator account is kept disabled during normal operations.
+
+Result:
+
+```text
+Account activation and deactivation are recorded in the Windows Security log.
+```
+
+### Scenario 6: Server Administrator Separation
+
+A Windows Server 2025 member server was joined to the domain:
+
+```text
+SRV-WIN01
+```
+
+The account:
+
+```text
+srv.adm.valentin
+```
+
+receives server administration permissions through:
+
+```text
+GG_Server_Admins
+```
+
+Result:
+
+```text
+Server administration is separated from workstation and domain administration.
+```
+
+### Scenario 7: Privileged Group Monitoring
+
+A privileged account was temporarily added to and removed from:
+
+```text
+GG_PAM_Admins
+```
+
+Result:
+
+```text
+Event 4728 recorded the addition.
+Event 4729 recorded the removal.
+```
+
+### Scenario 8: Privileged Server Activity Auditing
+
+Administrative activity was generated on `SRV-WIN01`.
+
+Result:
+
+```text
+Successful logons, privileged logons, and process creation events were recorded.
+```
+
+## Screenshots
+
+### Active Directory Structure
+
+![Active Directory Structure](screenshots/01-ad-structure.png)
+
+### Group Policy Configuration
+
+![Group Policy Configuration](screenshots/02-group-policy.png)
+
+### Security Auditing
+
+![Security Auditing](screenshots/03-security-auditing.png)
+
+### Server Administration
+
+![Server Administration](screenshots/04-server-admin.png)
 
 ## Project Status
 
 * [x] Repository created
 * [x] Security-focused `.gitignore` added
-* [x] Windows Server 2025 VM deployed
-* [x] Static Domain Controller IP configured
+* [x] Initial project documentation created
+* [x] Windows Server 2025 Domain Controller deployed
+* [x] Static IP configured
 * [x] Active Directory Domain Services installed
 * [x] DNS Server configured
 * [x] `cyberlab.local` domain created
 * [x] Organizational Units created
 * [x] Users and security groups created
-* [x] Windows 11 workstation joined to the domain
+* [x] Windows 11 joined to the domain
+* [x] Windows Server member server joined to the domain
 * [x] Standard and privileged accounts separated
-* [x] Workstation administrator privileges delegated through Group Policy
-* [x] Helpdesk password-reset permissions delegated
-* [x] Helpdesk least-privilege scenario validated
-* [x] Service account security group created
-* [x] Interactive logon denied for service accounts
-* [x] Service account restriction validated
-* [x] Break-glass administrative account configured
-* [x] Domain Controller advanced auditing configured
-* [x] Break-glass enable/disable events audited
-* [x] Successful and failed authentication auditing configured
-* [ ] Additional privileged access monitoring
-* [ ] Additional attack and detection scenarios
-* [ ] Centralized security logging
-
----
+* [x] Workstation administrator role configured
+* [x] Server administrator role configured
+* [x] Helpdesk password reset permissions delegated
+* [x] Service account interactive logon restricted
+* [x] Break-glass account configured
+* [x] Domain Controller security auditing configured
+* [x] Privileged group changes audited
+* [x] Member server privileged activity auditing configured
+* [ ] Centralized security logging / SIEM integration
+* [ ] Additional detection scenarios
 
 ## Related Project
 
-`01-virtual-network`
+Virtual Network Security Lab:
 
-The networking lab contains the underlying OPNsense firewall, network segmentation, LAB-LAN, and ATTACK-LAN architecture used by this project.
+https://github.com/ValentinUdrea/01-virtual-network
+
 
 ---
 
